@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gerenciador de Macros</title>
+  <style>
+    body { 
+      font-family: Arial, sans-serif; 
+      width: 350px; 
+      padding: 10px; 
+      margin: 0; 
+      background: #f5f5f5; 
+      box-sizing: border-box;
+    }
+    .card { 
+      background: white; 
+      border-radius: 8px; 
+      padding: 16px; 
+      margin-bottom: 16px; 
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+    }
+    .title { 
+      font-size: 18px; 
+      font-weight: bold; 
+      margin-bottom: 8px; 
+    }
+    .description { 
+      color: #666; 
+      font-size: 14px; 
+      margin-bottom: 16px; 
+    }
+    input, textarea { 
+      width: 100%; 
+      padding: 8px; 
+      margin: 4px 0; 
+      border: 1px solid #ddd; 
+      border-radius: 4px; 
+      box-sizing: border-box; 
+      font-size: 14px;
+    }
+    textarea { 
+      min-height: 80px; 
+      resize: vertical; 
+    }
+    button { 
+      background: #007bff; 
+      color: white; 
+      border: none; 
+      padding: 8px 12px; 
+      border-radius: 4px; 
+      cursor: pointer; 
+      margin: 4px 4px 4px 0; 
+      font-size: 14px;
+    }
+    button:hover { 
+      background: #0056b3; 
+    }
+    button.outline { 
+      background: transparent; 
+      color: #007bff; 
+      border: 1px solid #007bff; 
+    }
+    button.outline:hover { 
+      background: #e3f2fd; 
+    }
+    .macro-item { 
+      background: #f8f9fa; 
+      padding: 12px; 
+      border-radius: 4px; 
+      margin-bottom: 8px; 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: flex-start; 
+    }
+    .shortcut { 
+      background: #e3f2fd; 
+      padding: 4px 8px; 
+      border-radius: 4px; 
+      font-family: monospace; 
+      font-size: 12px; 
+    }
+    .text-preview { 
+      font-size: 12px; 
+      color: #666; 
+      margin-top: 4px; 
+      white-space: pre-wrap; 
+      max-width: 200px; 
+    }
+    .no-macros { 
+      text-align: center; 
+      color: #999; 
+      padding: 20px; 
+      font-style: italic;
+    }
+    .section { 
+      display: block; 
+    }
+    .hidden { 
+      display: none; 
+    }
+    .button-group { 
+      display: flex; 
+      gap: 8px; 
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="title">Gerenciador de Macros</div>
+    <div class="description">Crie e gerencie seus atalhos de texto</div>
+    
+    <!-- Seção para adicionar nova macro -->
+    <div id="form-section" class="section">
+      <input id="shortcut" placeholder="Atalho (ex: /endereco)" />
+      <input id="name" placeholder="Nome (ex: Endereço Completo)" />
+      <textarea id="text" placeholder="Texto a ser preenchido"></textarea>
+      <button id="add-macro-btn">Adicionar Macro</button>
+    </div>
+    
+    <!-- Seção para editar macro (inicialmente oculta) -->
+    <div id="edit-section" class="section hidden">
+      <input id="edit-shortcut" placeholder="Atalho" />
+      <input id="edit-name" placeholder="Nome" />
+      <textarea id="edit-text" placeholder="Texto"></textarea>
+      <div class="button-group">
+        <button id="update-macro-btn">Salvar</button>
+        <button id="cancel-edit-btn" class="outline">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="title">Macros Salvas</div>
+    <div id="macros-list">
+      <div class="no-macros">Nenhuma macro encontrada</div>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

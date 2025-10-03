@@ -1,0 +1,35 @@
+{
+  "manifest_version": 3,
+  "name": "Gerenciador de Macros de Texto",
+  "version": "1.1.0",
+  "description": "Crie e gerencie atalhos de texto para preenchimento rápido em qualquer site, com autocomplete múltiplo.",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Gerenciar Macros"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>",
+        "https://chat.google.com/*",
+        "https://mail.google.com/*",
+        "https://*.zendesk.com/*",
+        "https://*.zendesk.com/hc/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_end",
+      "all_frames": true  
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  }
+}
