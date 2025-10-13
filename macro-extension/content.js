@@ -6,26 +6,34 @@ let currentSuggestions = [];   // Lista de macros filtradas
 let selectedIndex = -1;        // Índice da sugestão selecionada (-1 = nenhuma)
 let lastPrefix = '';           // Prefixo atual digitado
 
-// Função para obter elementos editáveis (expandido para Google Chat/Zendesk)
+// Função para obter elementos editáveis, incluindo em iframes
 function getEditableElements() {
-  const selectors = [
-    'input[type="text"], input[type="search"], input[type="email"], input[type="url"], input:not([type])',
-    'textarea',
-    '[contenteditable="true"]',
-    // Google Chat específicos
-    '.chat-message-input, [data-testid="message-input"], .editing, .message-composer-input',
-    // Zendesk específicos (tickets e HC)
-    '.ticket-description, .public-comment-input, .private-comment-input, .editable-textarea, [data-test-id="comment-input"]',
-    '[role="textbox"], .editable'
-  ].join(', ');
-  return [
-    ...document.querySelectorAll(selectors)
-  ].filter(el => !el.disabled && el.offsetParent !== null && el.isConnected);  // Visíveis e conectados
+  let elements = [
+    ...document.querySelectorAll('input[type="text"], input[type="search"], input[type="email"], input[type="url"], input:not([type]), textarea, [contenteditable="true"], [role="textbox"]')
+  ].filter(el => !el.disabled && el.offsetParent !== null && el.isConnected);
+
+  // Procura em iframes
+  const iframes = document.querySelectorAll('iframe');
+  iframes.forEach(iframe => {
+    try {
+      if (iframe.contentDocument && iframe.contentDocument.readyState === 'complete') {
+        const iframeElements = iframe.contentDocument.querySelectorAll('input[type="text"], input[type="search"], input[type="email"], input[type="url"], input:not([type]), textarea, [contenteditable="true"], [role="textbox"]');
+        iframeElements.forEach(el => {
+          if (!el.disabled && el.offsetParent !== null && el.isConnected) {
+            elements.push(el);  // Adiciona elementos do iframe
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao acessar iframe:', error);  // Log para depuração
+    }
+  });
+  return elements;
 }
 
 // Função para monitorar input (filtragem em tempo real)
 function monitorInput(element) {
-  console.log('Monitorando elemento:', element.tagName, element.className || '');  // Log
+  console.log('Monitorando elemento:', element.tagName, element.className || element.id || 'sem ID', element.ownerDocument.location.href);  // Log
 
   const handleInputOrKeyup = async (e) => {
     if (e.type === 'keydown' && !['ArrowUp', 'ArrowDown', 'Tab', 'Enter', 'Escape'].includes(e.key)) {
@@ -154,7 +162,7 @@ function setElementValue(element, newValue) {
 
 // Função para escape regex
 function escapeRegExp(string) {
-  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return string.replace(/.*+?^${}()|\$\\$/g, '\\$&');
 }
 
 // Função para mostrar dropdown de sugestões
@@ -173,7 +181,6 @@ function showSuggestions(suggestions, inputElement, prefix) {
     box-shadow: 0 4px 12px rgba(0,0,0,0.15); font-family: Arial, sans-serif; font-size: 14px;
   `;
 
-  // Gera lista de itens
   const itemsHtml = suggestions.map((macro, index) => {
     const preview = macro.text.length > 40 ? macro.text.substring(0, 40) + '...' : macro.text;
     return `
@@ -188,7 +195,6 @@ function showSuggestions(suggestions, inputElement, prefix) {
 
   activeSuggestions.innerHTML = itemsHtml;
 
-  // Eventos de clique nos itens
   activeSuggestions.querySelectorAll('.suggestion-item').forEach((item, index) => {
     item.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -203,13 +209,12 @@ function showSuggestions(suggestions, inputElement, prefix) {
 
   document.body.appendChild(activeSuggestions);
 
-  // Ajusta posição se sair da tela
   const dropdownRect = activeSuggestions.getBoundingClientRect();
   if (dropdownRect.bottom > window.innerHeight) {
     activeSuggestions.style.top = `${rect.top + scrollY - dropdownRect.height - 5}px`;
   }
 
-  console.log('Dropdown exibido com', suggestions.length, 'sugestões');  // Log
+  console.log('Dropdown exibido com', suggestions.length, 'sugestões');
 }
 
 // Atualiza destaque da seleção
@@ -218,16 +223,16 @@ function updateSelection() {
   activeSuggestions.querySelectorAll('.suggestion-item').forEach((item, index) => {
     item.classList.toggle('selected', index === selectedIndex);
   });
-  activeSuggestions.scrollTo({ top: selectedIndex * 40, behavior: 'smooth' });  // Scroll suave
+  activeSuggestions.scrollTo({ top: selectedIndex * 40, behavior: 'smooth' });
 }
 
 // Aplica sugestão selecionada
 function applySuggestion(macro, inputElement, prefix) {
   const currentValue = getElementValue(inputElement);
   const regex = new RegExp(escapeRegExp(prefix) + '\\s*$', 'i');
-  const newValue = currentValue.replace(regex, macro.text + ' ');  // Substitui prefixo pelo texto
+  const newValue = currentValue.replace(regex, macro.text + ' ');
   setElementValue(inputElement, newValue);
-  console.log(`Aplicada macro: ${macro.name}`);  // Log
+  console.log(`Aplicada macro: ${macro.name}`);
 }
 
 // Esconde sugestões
@@ -238,11 +243,11 @@ function hideSuggestions() {
     currentSuggestions = [];
     selectedIndex = -1;
     lastPrefix = '';
-    console.log('Sugestões escondidas');  // Log
+    console.log('Sugestões escondidas');
   }
 }
 
-// Listeners globais (para cliques fora e teclas)
+// Listeners globais
 document.addEventListener('click', (e) => {
   if (activeSuggestions && !activeSuggestions.contains(e.target) && e.target !== currentInput) {
     hideSuggestions();
@@ -256,14 +261,13 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-// Inicialização (com delay para SPAs como Google Chat/Zendesk)
+// Inicialização
 function init() {
   setTimeout(() => {
     const elements = getEditableElements();
-    console.log(`Inicializando: ${elements.length} elementos encontrados`);  // Log
+    console.log(`Inicializando: ${elements.length} elementos encontrados`);
     elements.forEach(monitorInput);
 
-    // Observer robusto para elementos dinâmicos (Google Chat/Zendesk carregam via JS)
     const observer = new MutationObserver((mutations) => {
       let newCount = 0;
       mutations.forEach((mutation) => {
@@ -272,7 +276,6 @@ function init() {
             const newElements = node.querySelectorAll ? [...node.querySelectorAll(getEditableElements().toString())] : [];
             newElements.forEach(monitorInput);
             newCount += newElements.length;
-            // Para shadow DOM (Zendesk/Google)
             if (node.shadowRoot) {
               const shadowElements = node.shadowRoot.querySelectorAll ? [...node.shadowRoot.querySelectorAll(getEditableElements().toString())] : [];
               shadowElements.forEach(monitorInput);
@@ -280,15 +283,14 @@ function init() {
           }
         });
       });
-      if (newCount > 0) console.log(`Observer: +${newCount} elementos`);  // Log
+      if (newCount > 0) console.log(`Observer: +${newCount} elementos`);
     });
 
     observer.observe(document.body, { childList: true, subtree: true });
-    console.log('Content script pronto - Autocomplete ativado!');  // Log
-  }, 500);  // Delay maior para apps pesados
+    console.log('Content script pronto - Autocomplete ativado!');
+  }, 500);
 }
 
-// Inicia
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
 } else {
