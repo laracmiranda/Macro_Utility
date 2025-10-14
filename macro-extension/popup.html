@@ -5,21 +5,126 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Gerenciador de Macros</title>
   <style>
-    body { font-family: Arial, sans-serif; width: 350px; padding: 10px; margin: 0; background: #f5f5f5; }
-    .card { background: white; border-radius: 8px; padding: 16px; margin-bottom: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-    .tabs { display: flex; margin-bottom: 10px; }
-    .tab-button { padding: 10px 20px; background: #e0e0e0; border: none; cursor: pointer; font-weight: bold; }
-    .tab-button.active { background: #007bff; color: white; }
-    .tab-content { display: none; }
-    .tab-content.active { display: block; }
-    input, textarea { width: 90%; padding: 8px; margin: 4px 0; border: 1px solid #ddd; border-radius: 4px; }
-    textarea { min-height: 80px; resize: vertical; }
-    #update-macro-btn { background-color: #007bff; }
-    .delete-btn { background-color: #af4444; }
-    #cancel-edit-btn { background-color: silver; }
-    button { background-color: #007bff; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; margin: 4px; }
-    .macro-item { background: #f8f9fa; padding: 12px; border-radius: 4px; margin-bottom: 8px; }
-    .search-input { width: 100%; padding: 8px; margin-bottom: 10px; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      width: 350px;
+      padding: 10px;
+      margin: 0;
+      background: #f4f4f4;
+      color: #333;
+    }
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      transition: box-shadow 0.3s ease;
+    }
+    .card:hover {
+      box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+    }
+    .tabs {
+      display: flex;
+      margin-bottom: 15px;
+      border-bottom: 2px solid #e0e0e0;
+    }
+    .tab-button {
+      padding: 10px 20px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+      color: #007bff;
+      transition: color 0.3s, border-bottom 0.3s;
+      border-bottom: 2px solid transparent;
+    }
+    .tab-button.active {
+      color: #0056b3;
+      border-bottom: 2px solid #0056b3;
+    }
+    .tab-content {
+      display: none;
+    }
+    .tab-content.active {
+      display: block;
+    }
+    input, .rich-editor {
+      width: 100%;
+      padding: 10px;
+      margin: 8px 0;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 14px;
+      transition: border-color 0.3s;
+    }
+    input:focus, .rich-editor:focus {
+      border-color: #007bff;
+      outline: none;
+    }
+    .rich-editor {
+      min-height: 120px;
+      border: 1px solid #ddd;
+      overflow-y: auto;
+      background: #f9f9f9;
+    }
+    .format-buttons {
+      margin-bottom: 10px;
+      display: flex;
+      gap: 5px;
+    }
+    .format-button {
+      padding: 8px 12px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background 0.3s;
+    }
+    .format-button:hover {
+      background: #0056b3;
+    }
+    .macro-item {
+      background: #ffffff;
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      border-left: 4px solid #007bff;
+    }
+    .search-input {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 10px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+    button {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background 0.3s;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+    button.outline {
+      background: transparent;
+      color: #007bff;
+      border: 1px solid #007bff;
+      transition: background 0.3s, color 0.3s;
+    }
+    button.outline:hover {
+      background: #e7f1ff;
+      color: #0056b3;
+    }
   </style>
 </head>
 <body>
@@ -34,13 +139,23 @@
       <div id="form-section">
         <input id="shortcut" placeholder="Atalho (ex: /endereco)" />
         <input id="name" placeholder="Nome (ex: Endereço Completo)" />
-        <textarea id="text" placeholder="Texto a ser preenchido"></textarea>
+        <div id="rich-editor" class="rich-editor" contenteditable="true" placeholder="Texto a ser preenchido"></div>
+        <div class="format-buttons">
+          <button id="bold-btn">Negrito</button>
+          <button id="italic-btn">Itálico</button>
+          <button id="list-btn">Lista</button>
+        </div>
         <button id="add-macro-btn">Adicionar Macro</button>
       </div>
       <div id="edit-section" style="display: none;">
         <input id="edit-shortcut" placeholder="Atalho" />
         <input id="edit-name" placeholder="Nome" />
-        <textarea id="edit-text" placeholder="Texto"></textarea>
+        <div id="edit-rich-editor" class="rich-editor" contenteditable="true" placeholder="Texto a ser preenchido"></div>
+        <div class="format-buttons">
+          <button id="edit-bold-btn">Negrito</button>
+          <button id="edit-italic-btn">Itálico</button>
+          <button id="edit-list-btn">Lista</button>
+        </div>
         <div>
           <button id="update-macro-btn">Salvar</button>
           <button id="cancel-edit-btn" class="outline">Cancelar</button>
@@ -49,7 +164,7 @@
     </div>
 
     <div id="visualizar" class="tab-content">
-      <input id="search-input" placeholder="Buscar macros..." oninput="filterMacros()">
+      <input id="search-input" placeholder="Buscar macros..." />
       <div id="macros-list"></div>
     </div>
   </div>

@@ -17,7 +17,7 @@ function saveMacros() {
 function addMacro() {
   const shortcut = document.getElementById('shortcut').value.trim();
   const name = document.getElementById('name').value.trim();
-  const text = document.getElementById('text').value.trim();
+  const text = document.getElementById('rich-editor').innerHTML.trim();  // Usar innerHTML para texto formatado
   
   if (!shortcut || !name || !text) {
     alert('Preencha todos os campos!');
@@ -34,11 +34,11 @@ function addMacro() {
   saveMacros();
   document.getElementById('shortcut').value = '';
   document.getElementById('name').value = '';
-  document.getElementById('text').value = '';
+  document.getElementById('rich-editor').innerHTML = '';  // Limpa o editor
 }
 
 function startEdit(id) {
-  openTab('cadastrar');  // Alterna para a aba de cadastro primeiro
+  openTab('cadastrar');  // Alterna para a aba de cadastro
   const macro = macros.find(m => m.id === id);
   if (!macro) return;
   
@@ -47,7 +47,8 @@ function startEdit(id) {
   document.getElementById('edit-section').style.display = 'block';
   document.getElementById('edit-shortcut').value = macro.shortcut;
   document.getElementById('edit-name').value = macro.name;
-  document.getElementById('edit-text').value = macro.text;
+  document.getElementById('edit-rich-editor').innerHTML = macro.text;  // Carrega texto formatado
+  document.getElementById('edit-rich-editor').focus();  // Foca no editor
 }
 
 function updateMacro() {
@@ -55,7 +56,7 @@ function updateMacro() {
   
   const shortcut = document.getElementById('edit-shortcut').value.trim();
   const name = document.getElementById('edit-name').value.trim();
-  const text = document.getElementById('edit-text').value.trim();
+  const text = document.getElementById('edit-rich-editor').innerHTML.trim();  // Usar innerHTML
   
   if (!shortcut || !name || !text) {
     alert('Preencha todos os campos!');
@@ -79,7 +80,7 @@ function cancelEdit() {
   document.getElementById('edit-section').style.display = 'none';
   document.getElementById('edit-shortcut').value = '';
   document.getElementById('edit-name').value = '';
-  document.getElementById('edit-text').value = '';
+  document.getElementById('edit-rich-editor').innerHTML = '';
 }
 
 function renderMacros() {
@@ -164,10 +165,50 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('macros-list').addEventListener('click', (e) => {
     if (e.target.classList.contains('edit-btn')) {
       const id = e.target.getAttribute('data-id');
-      startEdit(id);
+      if (id) startEdit(id);
     } else if (e.target.classList.contains('delete-btn')) {
       const id = e.target.getAttribute('data-id');
-      deleteMacro(id);
+      if (id) deleteMacro(id);
+    }
+  });
+  
+  // Eventos para botões de formatação no editor principal
+  document.getElementById('bold-btn').addEventListener('click', () => {
+    if (document.getElementById('rich-editor')) {
+      document.getElementById('rich-editor').focus();
+      document.execCommand('bold', false, null);
+    }
+  });
+  document.getElementById('italic-btn').addEventListener('click', () => {
+    if (document.getElementById('rich-editor')) {
+      document.getElementById('rich-editor').focus();
+      document.execCommand('italic', false, null);
+    }
+  });
+  document.getElementById('list-btn').addEventListener('click', () => {
+    if (document.getElementById('rich-editor')) {
+      document.getElementById('rich-editor').focus();
+      document.execCommand('insertUnorderedList', false, null);
+    }
+  });
+  
+  // Eventos para botões de formatação no editor de edição
+  document.getElementById('edit-bold-btn').addEventListener('click', () => {
+    if (document.getElementById('edit-rich-editor')) {
+      document.getElementById('edit-rich-editor').focus();
+      document.execCommand('bold', false, null);
+    }
+  });
+  document.getElementById('edit-italic-btn').addEventListener('click', () => {
+    if (document.getElementById('edit-rich-editor')) {
+      document.getElementById('edit-rich-editor').focus();
+      document.execCommand('italic', false, null);
+    }
+  });
+  document.getElementById('edit-list-btn').addEventListener('click', () => {
+    if (document.getElementById('edit-rich-editor')) {
+      document.getElementById('edit-rich-editor').focus();
+      document.execCommand('insertUnorderedList', false, null);
     }
   });
 });

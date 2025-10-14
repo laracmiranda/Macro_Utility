@@ -6,10 +6,12 @@ let currentSuggestions = [];   // Lista de macros filtradas
 let selectedIndex = -1;        // Índice da sugestão selecionada (-1 = nenhuma)
 let lastPrefix = '';           // Prefixo atual digitado
 
+const EDITABLE_SELECTORS = 'input[type="text"], input[type="search"], input[type="email"], input[type="url"], input:not([type]), textarea, [contenteditable="true"], [role="textbox"]';
+
 // Função para obter elementos editáveis, incluindo em iframes
 function getEditableElements() {
   let elements = [
-    ...document.querySelectorAll('input[type="text"], input[type="search"], input[type="email"], input[type="url"], input:not([type]), textarea, [contenteditable="true"], [role="textbox"]')
+    ...document.querySelectorAll(EDITABLE_SELECTORS)
   ].filter(el => !el.disabled && el.offsetParent !== null && el.isConnected);
 
   // Procura em iframes
@@ -17,7 +19,7 @@ function getEditableElements() {
   iframes.forEach(iframe => {
     try {
       if (iframe.contentDocument && iframe.contentDocument.readyState === 'complete') {
-        const iframeElements = iframe.contentDocument.querySelectorAll('input[type="text"], input[type="search"], input[type="email"], input[type="url"], input:not([type]), textarea, [contenteditable="true"], [role="textbox"]');
+        const iframeElements = iframe.contentDocument.querySelectorAll(EDITABLE_SELECTORS);
         iframeElements.forEach(el => {
           if (!el.disabled && el.offsetParent !== null && el.isConnected) {
             elements.push(el);  // Adiciona elementos do iframe
@@ -25,7 +27,7 @@ function getEditableElements() {
         });
       }
     } catch (error) {
-      console.error('Erro ao acessar iframe:', error);  // Log para depuração
+      // Nada aqui
     }
   });
   return elements;
@@ -33,8 +35,6 @@ function getEditableElements() {
 
 // Função para monitorar input (filtragem em tempo real)
 function monitorInput(element) {
-  console.log('Monitorando elemento:', element.tagName, element.className || element.id || 'sem ID', element.ownerDocument.location.href);  // Log
-
   const handleInputOrKeyup = async (e) => {
     if (e.type === 'keydown' && !['ArrowUp', 'ArrowDown', 'Tab', 'Enter', 'Escape'].includes(e.key)) {
       return;  // Só processa input/keyup para texto, keydown para navegação
@@ -42,7 +42,6 @@ function monitorInput(element) {
 
     currentInput = e.target || e.srcElement || e.composedPath?.()[0];  // Suporte shadow DOM
     const value = getElementValue(currentInput);
-    console.log('Valor atual:', value);  // Log
 
     if (!value) {
       hideSuggestions();
@@ -62,7 +61,6 @@ function monitorInput(element) {
     }
 
     lastPrefix = prefix;
-    console.log('Prefixo detectado:', prefix);  // Log
 
     try {
       const result = await chrome.storage.local.get('macros');
@@ -71,9 +69,6 @@ function monitorInput(element) {
         m.shortcut.toLowerCase().startsWith(prefix.toLowerCase())
       ).slice(0, 10);  // Limita a 10 sugestões
 
-      console.log(`Sugestões filtradas para "${prefix}": ${currentSuggestions.length}`, 
-                  currentSuggestions.map(m => m.shortcut));  // Log
-
       if (currentSuggestions.length > 0) {
         selectedIndex = 0;  // Começa na primeira
         showSuggestions(currentSuggestions, currentInput, prefix);
@@ -81,7 +76,6 @@ function monitorInput(element) {
         hideSuggestions();
       }
     } catch (error) {
-      console.error('Erro ao filtrar macros:', error);
       // Fallback background
       chrome.runtime.sendMessage({ action: 'getMacros' }, (response) => {
         if (response?.macros) {
@@ -139,30 +133,29 @@ function getElementValue(element) {
   return (element.value || element.textContent || element.innerText || '').trim();
 }
 
-// Função para definir valor (substitui prefixo pelo texto da macro)
+// Função para definir valor (substitui prefixo pelo texto da macro, com suporte a HTML)
 function setElementValue(element, newValue) {
-  if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
-    element.value = newValue;
-    element.setSelectionRange(newValue.length, newValue.length);
+  if (element.isContentEditable) {
+    // Para elementos contenteditable, usa innerHTML para preservar formatação
+    element.innerHTML += newValue;  // Adiciona ao final para manter o cursor
+  } else if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
+    element.value += newValue;  // Para inputs, usa value
+    element.setSelectionRange(element.value.length, element.value.length);
     element.dispatchEvent(new Event('input', { bubbles: true }));
     element.dispatchEvent(new Event('change', { bubbles: true }));
   } else {
-    element.textContent = newValue;
-    const range = document.createRange();
-    const sel = window.getSelection();
-    range.selectNodeContents(element);
-    range.collapse(false);
-    sel.removeAllRanges();
-    sel.addRange(range);
-    element.dispatchEvent(new Event('input', { bubbles: true }));
+    element.textContent += newValue;  // Para outros, usa textContent
   }
   element.focus();
-  console.log('Aplicado:', newValue);  // Log
 }
 
 // Função para escape regex
-function escapeRegExp(string) {
-  return string.replace(/.*+?^${}()|\$\\$/g, '\\$&');
+function escapeRegExp(string) {  
+  try {    
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');  // Regex válida  
+  } catch (error) {    
+    return string;  // Fallback para evitar crash  
+  }
 }
 
 // Função para mostrar dropdown de sugestões
@@ -182,7 +175,7 @@ function showSuggestions(suggestions, inputElement, prefix) {
   `;
 
   const itemsHtml = suggestions.map((macro, index) => {
-    const preview = macro.text.length > 40 ? macro.text.substring(0, 40) + '...' : macro.text;
+    const preview = macro.text.substring(0, 50) + (macro.text.length > 50 ? '...' : '');
     return `
       <div class="suggestion-item ${index === selectedIndex ? 'selected' : ''}" data-index="${index}"
            style="padding: 8px 12px; cursor: pointer; border-bottom: 1px solid #eee;
@@ -213,8 +206,6 @@ function showSuggestions(suggestions, inputElement, prefix) {
   if (dropdownRect.bottom > window.innerHeight) {
     activeSuggestions.style.top = `${rect.top + scrollY - dropdownRect.height - 5}px`;
   }
-
-  console.log('Dropdown exibido com', suggestions.length, 'sugestões');
 }
 
 // Atualiza destaque da seleção
@@ -232,7 +223,6 @@ function applySuggestion(macro, inputElement, prefix) {
   const regex = new RegExp(escapeRegExp(prefix) + '\\s*$', 'i');
   const newValue = currentValue.replace(regex, macro.text + ' ');
   setElementValue(inputElement, newValue);
-  console.log(`Aplicada macro: ${macro.name}`);
 }
 
 // Esconde sugestões
@@ -243,7 +233,6 @@ function hideSuggestions() {
     currentSuggestions = [];
     selectedIndex = -1;
     lastPrefix = '';
-    console.log('Sugestões escondidas');
   }
 }
 
@@ -265,29 +254,24 @@ document.addEventListener('keydown', (e) => {
 function init() {
   setTimeout(() => {
     const elements = getEditableElements();
-    console.log(`Inicializando: ${elements.length} elementos encontrados`);
     elements.forEach(monitorInput);
 
     const observer = new MutationObserver((mutations) => {
-      let newCount = 0;
       mutations.forEach((mutation) => {
         mutation.addedNodes.forEach((node) => {
           if (node.nodeType === 1) {
-            const newElements = node.querySelectorAll ? [...node.querySelectorAll(getEditableElements().toString())] : [];
+            const newElements = node.querySelectorAll ? [...node.querySelectorAll(EDITABLE_SELECTORS)] : [];
             newElements.forEach(monitorInput);
-            newCount += newElements.length;
             if (node.shadowRoot) {
-              const shadowElements = node.shadowRoot.querySelectorAll ? [...node.shadowRoot.querySelectorAll(getEditableElements().toString())] : [];
+              const shadowElements = node.shadowRoot.querySelectorAll ? [...node.shadowRoot.querySelectorAll(EDITABLE_SELECTORS)] : [];
               shadowElements.forEach(monitorInput);
             }
           }
         });
       });
-      if (newCount > 0) console.log(`Observer: +${newCount} elementos`);
     });
 
     observer.observe(document.body, { childList: true, subtree: true });
-    console.log('Content script pronto - Autocomplete ativado!');
   }, 500);
 }
 
